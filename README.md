@@ -18,6 +18,9 @@ A simple Express proxy server that forwards API requests and attaches a cookie h
    ```
    TARGET_API=https://your-staging-api.com
    COOKIE_STRING=your_full_cookie_string_here
+   
+   # Optional: Add custom headers as JSON
+   CUSTOM_HEADERS={"Authorization": "Bearer token123", "X-Custom-Header": "value"}
    ```
 
 ## Usage
