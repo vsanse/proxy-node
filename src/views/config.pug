@@ -1,0 +1,275 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Proxy Configuration
+    style
+      include styles.css
+
+  body
+    .container
+      h1
+        span 🔧
+        |  Proxy Configuration
+      p.subtitle Manage your authentication proxy settings
+
+      if message
+        .message(class=message.type)= message.text
+
+      //- Status Card
+      .card
+        h2 📊 Status
+        .stats
+          .stat
+            .stat-value= config.targets.length
+            .stat-label Active Targets
+          .stat
+            .stat-value= config.port
+            .stat-label Port
+          .stat
+            .stat-value= config.logging.enabled ? '✓' : '✗'
+            .stat-label Logging
+          .stat
+            .stat-value= config.logging.logToFile ? '✓' : '✗'
+            .stat-label File Logs
+
+      //- Targets Card
+      .card
+        h2 🎯 Configured Targets
+        if config.targetSource === 'env'
+          p.env-notice
+            span.env-badge ENV
+            |  Targets loaded from environment variables (read-only)
+        if config.targets.length === 0
+          p.no-targets No targets configured. Add one below.
+        else if config.targets.length === 1 && config.targets[0].name === 'example' && config.targets[0].target === 'https://api.example.com'
+          p.no-targets
+            | ⚠️ Using placeholder example target. Replace it with your actual API target below.
+          each target, index in config.targets
+            .target.example-target
+              .target-header
+                .target-name-group
+                  span.target-name= target.name
+                  span.source-badge.example EXAMPLE
+                span.badge= target.pattern
+              .target-info
+                label Target URL:
+                span= target.target
+              form.delete-form(method="POST" action=`/_config/targets/${encodeURIComponent(target.name)}/delete`)
+                button.btn.btn-danger.btn-sm(type="submit" onclick="return confirm('Delete this example target?')") Delete
+        else
+          each target, index in config.targets
+            .target(data-target-name=target.name)
+              .target-header
+                .target-name-group
+                  span.target-name= target.name
+                  if target.source === 'env'
+                    span.source-badge ENV
+                span.badge= target.pattern
+              .target-info
+                label Pattern:
+                span= target.pattern
+                label Target URL:
+                span= target.target
+                label Cookies:
+                span= target.cookies && target.cookies.trim() ? (target.cookies.length > 50 ? target.cookies.substring(0, 50) + '...' : target.cookies) : '(none)'
+                label Headers:
+                span= target.headers && Object.keys(target.headers).length > 0 ? Object.keys(target.headers).join(', ') : '(none)'
+              if target.source !== 'env'
+                .target-actions
+                  button.btn.btn-secondary.btn-sm(type="button" onclick=`openEditModal(${JSON.stringify(target)})`) Edit
+                  form.delete-form(method="POST" action=`/_config/targets/${encodeURIComponent(target.name)}/delete` style="display:inline;margin:0;")
+                    button.btn.btn-danger.btn-sm(type="submit" onclick="return confirm('Delete this target?')") Delete
+              else
+                p.env-hint Edit .env file to modify this target
+
+      //- Add New Target Card
+      .card
+        .collapsible-header(onclick="toggleCollapsible(this)")
+          h2 ➕ Add New Target
+          span.arrow ▼
+        .collapsible-content
+          form(method="POST" action="/_config/targets")
+            .form-group
+              label Name
+              input(type="text" name="name" placeholder="my-api" required)
+              p.help-text A unique identifier for this target
+            .form-group
+              label Pattern
+              input(type="text" name="pattern" placeholder="/api/*" required)
+              p.help-text URL pattern to match (e.g., /api/*, /users/**, /*)
+            .form-group
+              label Target URL
+              input(type="url" name="target" placeholder="https://api.example.com" required)
+            .form-group
+              label Cookies
+              textarea(name="cookies" placeholder="session=abc123; token=xyz789")
+              p.help-text Optional - leave empty if using only headers
+            .form-group
+              label Custom Headers (JSON)
+              textarea(name="headers" placeholder='{"Authorization": "Bearer token123"}')
+            button.btn.btn-primary(type="submit") Add Target
+
+      //- Logging Settings Card
+      .card
+        h2 ⚙️ Logging Settings
+        form(method="POST" action="/_config/logging")
+          .form-group
+            .toggle-group
+              label.toggle
+                input(type="checkbox" name="enabled" checked=config.logging.enabled)
+                span.toggle-slider
+              span Enable Logging
+          .form-group
+            .toggle-group
+              label.toggle
+                input(type="checkbox" name="logToFile" checked=config.logging.logToFile)
+                span.toggle-slider
+              span Log to File
+          .form-group
+            label Log Directory
+            input(type="text" name="logDir" value=config.logging.logDir)
+          .form-group
+            .toggle-group
+              label.toggle
+                input(type="checkbox" name="logRequestBody" checked=config.logging.logRequestBody)
+                span.toggle-slider
+              span Log Request Bodies
+          .form-group
+            .toggle-group
+              label.toggle
+                input(type="checkbox" name="logResponseBody" checked=config.logging.logResponseBody)
+                span.toggle-slider
+              span Log Response Bodies
+          button.btn.btn-primary(type="submit") Save Logging Settings
+
+      //- Quick Reference Card
+      .card
+        h2 📋 Quick Reference
+        .target-info
+          label Proxy URL:
+          span http://localhost:#{config.port}
+          label Config API:
+          span GET /_config/api/status
+          label Config File:
+          span proxy-config.json
+
+    //- Edit Target Modal
+    #edit-modal.modal
+      .modal-backdrop(onclick="closeEditModal()")
+      .modal-content
+        .modal-header
+          h3 ✏️ Edit Target
+          button.modal-close(onclick="closeEditModal()") ×
+        form#edit-form(method="POST")
+          input#edit-original-name(type="hidden" name="originalName")
+          .form-group
+            label Name
+            input#edit-name(type="text" name="name" required)
+          .form-group
+            label Pattern
+            input#edit-pattern(type="text" name="pattern" required)
+            p.help-text URL pattern to match (e.g., /api/*, /users/**, /*)
+          .form-group
+            label Target URL
+            input#edit-target(type="url" name="target" required)
+          .form-group
+            label Cookies
+            textarea#edit-cookies(name="cookies" rows="3")
+          .form-group
+            label Custom Headers (JSON)
+            textarea#edit-headers(name="headers" rows="3")
+          .modal-actions
+            button.btn.btn-secondary(type="button" onclick="closeEditModal()") Cancel
+            button.btn.btn-primary(type="submit") Save Changes
+
+    script.
+      function toggleCollapsible(header) {
+        const content = header.nextElementSibling;
+        const arrow = header.querySelector('.arrow');
+        content.classList.toggle('show');
+        arrow.classList.toggle('open');
+      }
+      
+      // Edit Modal functions
+      function openEditModal(target) {
+        const modal = document.getElementById('edit-modal');
+        const form = document.getElementById('edit-form');
+        
+        // Set form action with the original target name
+        form.action = '/_config/targets/' + encodeURIComponent(target.name) + '/edit';
+        
+        // Populate form fields
+        document.getElementById('edit-original-name').value = target.name;
+        document.getElementById('edit-name').value = target.name;
+        document.getElementById('edit-pattern').value = target.pattern;
+        document.getElementById('edit-target').value = target.target;
+        document.getElementById('edit-cookies').value = target.cookies || '';
+        document.getElementById('edit-headers').value = target.headers && Object.keys(target.headers).length > 0 
+          ? JSON.stringify(target.headers, null, 2) 
+          : '';
+        
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeEditModal() {
+        const modal = document.getElementById('edit-modal');
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+      
+      // Close modal on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeEditModal();
+      });
+      
+      // Live reload via Server-Sent Events
+      (function() {
+        let reconnectAttempts = 0;
+        const maxReconnectAttempts = 10;
+        const reconnectDelay = 1000;
+        
+        function connect() {
+          const evtSource = new EventSource('/_config/live-reload');
+          
+          evtSource.addEventListener('connected', () => {
+            console.log('🔌 Live reload connected');
+            reconnectAttempts = 0;
+            showNotification('Live reload connected', 'success');
+          });
+          
+          evtSource.addEventListener('reload', () => {
+            console.log('🔄 Reloading...');
+            showNotification('Reloading...', 'info');
+            setTimeout(() => location.reload(), 300);
+          });
+          
+          evtSource.onerror = () => {
+            evtSource.close();
+            if (reconnectAttempts < maxReconnectAttempts) {
+              reconnectAttempts++;
+              console.log(`Reconnecting... (attempt ${reconnectAttempts})`);
+              setTimeout(connect, reconnectDelay * reconnectAttempts);
+            }
+          };
+        }
+        
+        function showNotification(text, type) {
+          let notification = document.getElementById('live-notification');
+          if (!notification) {
+            notification = document.createElement('div');
+            notification.id = 'live-notification';
+            notification.style.cssText = 'position:fixed;bottom:20px;right:20px;padding:10px 16px;border-radius:6px;font-size:13px;z-index:1000;transition:opacity 0.3s;';
+            document.body.appendChild(notification);
+          }
+          notification.textContent = text;
+          notification.style.background = type === 'success' ? 'rgba(0,255,136,0.9)' : 'rgba(0,217,255,0.9)';
+          notification.style.color = '#000';
+          notification.style.opacity = '1';
+          setTimeout(() => { notification.style.opacity = '0'; }, 2000);
+        }
+        
+        connect();
+      })();

@@ -1,0 +1,37 @@
+{
+  "port": 3001,
+  "logging": {
+    "enabled": true,
+    "logToFile": false,
+    "logDir": "./logs",
+    "logRequestBody": false,
+    "logResponseBody": false
+  },
+  "targets": [
+    {
+      "name": "main-api",
+      "pattern": "/api/*",
+      "target": "https://api.example.com",
+      "cookies": "session=your_session_cookie_here",
+      "headers": {
+        "Authorization": "Bearer your_token_here"
+      }
+    },
+    {
+      "name": "auth-service",
+      "pattern": "/auth/**",
+      "target": "https://auth.example.com",
+      "cookies": "",
+      "headers": {
+        "X-API-Key": "your_api_key_here"
+      }
+    },
+    {
+      "name": "default",
+      "pattern": "/*",
+      "target": "https://default-api.example.com",
+      "cookies": "",
+      "headers": {}
+    }
+  ]
+}
