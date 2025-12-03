@@ -110,7 +110,7 @@ router.post('/targets', express.urlencoded({ extended: true }), (req, res) => {
       headers: parsedHeaders,
     });
 
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" added successfully. Restart the server to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" added successfully. Server restarted to apply changes.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -120,7 +120,7 @@ router.post('/targets', express.urlencoded({ extended: true }), (req, res) => {
 router.post('/targets/:name/delete', (req, res) => {
   try {
     config.removeTarget(req.params.name);
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${req.params.name}" deleted. Restart the server to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${req.params.name}" deleted. Server restarted to apply changes.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -153,7 +153,7 @@ router.post('/targets/:name/edit', express.urlencoded({ extended: true }), (req,
       headers: parsedHeaders,
     });
 
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" updated successfully. Restart the server to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" updated successfully. Server restarted to apply changes.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -171,7 +171,7 @@ router.post('/logging', express.urlencoded({ extended: true }), (req, res) => {
       logResponseBody: req.body.logResponseBody === 'on',
     };
     config.saveConfigToFile(cfg);
-    res.redirect('/_config?message=' + encodeURIComponent('Logging settings saved. Restart the server to apply changes.'));
+    res.redirect('/_config?message=' + encodeURIComponent('Logging settings saved. Server restarted to apply changes.'));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
