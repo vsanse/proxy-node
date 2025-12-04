@@ -173,8 +173,104 @@ function createRouter(config, logger) {
   };
 }
 
+/**
+ * Create a dynamic router that reloads config on each request
+ * This allows hot-reloading of targets without server restart
+ */
+function createDynamicRouter(getConfig, logger) {
+  // Cache for proxy middlewares, keyed by target config hash
+  const middlewareCache = new Map();
+
+  function getTargetKey(target) {
+    return JSON.stringify({
+      name: target.name,
+      pattern: target.pattern,
+      target: target.target,
+      cookies: target.cookies,
+      headers: target.headers,
+    });
+  }
+
+  function getOrCreateMiddleware(target) {
+    const key = getTargetKey(target);
+    if (!middlewareCache.has(key)) {
+      const middleware = createProxyMiddleware({
+        target: target.target,
+        changeOrigin: true,
+        pathRewrite: (path, req) => {
+          const rewritten = rewritePath(path, target.pattern);
+          req._rewrittenPath = rewritten;
+          return rewritten;
+        },
+        onProxyReq: (proxyReq, req, res) => {
+          const startTime = Date.now();
+          req._proxyStartTime = startTime;
+          req._targetName = target.name;
+
+          if (target.cookies && target.cookies.trim()) {
+            proxyReq.setHeader('Cookie', target.cookies);
+          }
+
+          if (target.headers) {
+            Object.entries(target.headers).forEach(([key, value]) => {
+              proxyReq.setHeader(key, value);
+            });
+          }
+
+          const finalPath = req._rewrittenPath || req.path;
+          logger.logRequest(req, target.name, target.target, finalPath);
+        },
+        onProxyRes: (proxyRes, req, res) => {
+          const duration = Date.now() - (req._proxyStartTime || Date.now());
+          logger.logResponse(req, proxyRes, target.name, duration);
+        },
+        onError: (err, req, res) => {
+          logger.logError(req, err, target.name);
+          if (!res.headersSent) {
+            res.status(502).json({
+              error: 'Proxy error',
+              message: err.message,
+              target: target.name,
+            });
+          }
+        },
+      });
+      middlewareCache.set(key, middleware);
+    }
+    return middlewareCache.get(key);
+  }
+
+  return (req, res, next) => {
+    // Reload config on each request
+    const config = getConfig();
+
+    // Handle empty targets
+    if (!config.targets || config.targets.length === 0) {
+      return res.status(503).json({
+        error: 'No targets configured',
+        message: 'Please configure at least one target in proxy-config.json or via environment variables',
+        configUI: `http://localhost:${config.port}/_config`,
+      });
+    }
+
+    const target = findMatchingTarget(req.path, config.targets);
+
+    if (!target) {
+      return res.status(404).json({
+        error: 'No matching target',
+        path: req.path,
+        availablePatterns: config.targets.map((t) => t.pattern),
+      });
+    }
+
+    const middleware = getOrCreateMiddleware(target);
+    middleware(req, res, next);
+  };
+}
+
 module.exports = {
   createRouter,
+  createDynamicRouter,
   findMatchingTarget,
   patternToRegex,
 };

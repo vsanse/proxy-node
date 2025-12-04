@@ -2,23 +2,24 @@ require('dotenv').config();
 const express = require('express');
 const { getConfig } = require('./src/config');
 const logger = require('./src/logger');
-const { createRouter } = require('./src/router');
+const { createDynamicRouter } = require('./src/router');
 const configUI = require('./src/config-ui');
 
 const app = express();
 
-// Load configuration
-const config = getConfig();
+// Load initial configuration
+const initialConfig = getConfig();
 
 // Initialize logger
-logger.init(config);
-logger.logStartup(config);
+logger.init(initialConfig);
+logger.logStartup(initialConfig);
 
 // Configuration UI routes (must be before proxy)
 app.use('/_config', configUI);
 
-// Health check endpoint
+// Health check endpoint (dynamically reads config)
 app.get('/_health', (req, res) => {
+  const config = getConfig();
   res.json({
     status: 'healthy',
     uptime: process.uptime(),
@@ -26,16 +27,16 @@ app.get('/_health', (req, res) => {
   });
 });
 
-// Create and apply the proxy router
-const proxyRouter = createRouter(config, logger);
+// Create and apply the dynamic proxy router (reloads config on each request)
+const proxyRouter = createDynamicRouter(getConfig, logger);
 app.use('/', proxyRouter);
 
 // Start server
-app.listen(config.port, () => {
-  console.log(`\n✅ Proxy server running on http://localhost:${config.port}`);
-  console.log(`🔧 Configuration UI: http://localhost:${config.port}/_config`);
-  console.log(`💚 Health check: http://localhost:${config.port}/_health`);
-  console.log(`\n📝 Point your local app to http://localhost:${config.port}\n`);
+app.listen(initialConfig.port, () => {
+  console.log(`\n✅ Proxy server running on http://localhost:${initialConfig.port}`);
+  console.log(`🔧 Configuration UI: http://localhost:${initialConfig.port}/_config`);
+  console.log(`💚 Health check: http://localhost:${initialConfig.port}/_health`);
+  console.log(`\n📝 Point your local app to http://localhost:${initialConfig.port}\n`);
 });
 
 // Graceful shutdown

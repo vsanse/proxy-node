@@ -110,7 +110,7 @@ router.post('/targets', express.urlencoded({ extended: true }), (req, res) => {
       headers: parsedHeaders,
     });
 
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" added successfully. Server restarted to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" added successfully. Changes applied immediately.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -120,7 +120,7 @@ router.post('/targets', express.urlencoded({ extended: true }), (req, res) => {
 router.post('/targets/:name/delete', (req, res) => {
   try {
     config.removeTarget(req.params.name);
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${req.params.name}" deleted. Server restarted to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${req.params.name}" deleted. Changes applied immediately.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -153,7 +153,7 @@ router.post('/targets/:name/edit', express.urlencoded({ extended: true }), (req,
       headers: parsedHeaders,
     });
 
-    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" updated successfully. Server restarted to apply changes.`));
+    res.redirect('/_config?message=' + encodeURIComponent(`Target "${name}" updated successfully. Changes applied immediately.`));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -171,7 +171,7 @@ router.post('/logging', express.urlencoded({ extended: true }), (req, res) => {
       logResponseBody: req.body.logResponseBody === 'on',
     };
     config.saveConfigToFile(cfg);
-    res.redirect('/_config?message=' + encodeURIComponent('Logging settings saved. Server restarted to apply changes.'));
+    res.redirect('/_config?message=' + encodeURIComponent('Logging settings saved. Changes applied immediately.'));
   } catch (err) {
     res.redirect('/_config?type=error&message=' + encodeURIComponent(err.message));
   }
@@ -206,7 +206,7 @@ router.post('/api/targets', express.json(), (req, res) => {
       return res.status(400).json({ error: 'Name, pattern, and target are required' });
     }
     config.addTarget({ name, pattern, target, cookies: cookies || '', headers: headers || {} });
-    res.json({ success: true, message: 'Target added. Restart server to apply.' });
+    res.json({ success: true, message: 'Target added. Changes applied immediately.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -215,7 +215,7 @@ router.post('/api/targets', express.json(), (req, res) => {
 router.delete('/api/targets/:name', (req, res) => {
   try {
     config.removeTarget(req.params.name);
-    res.json({ success: true, message: 'Target removed. Restart server to apply.' });
+    res.json({ success: true, message: 'Target removed. Changes applied immediately.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -228,7 +228,7 @@ router.put('/api/targets/:name', express.json(), (req, res) => {
       return res.status(400).json({ error: 'Name, pattern, and target are required' });
     }
     config.updateTarget(req.params.name, { name, pattern, target, cookies: cookies || '', headers: headers || {} });
-    res.json({ success: true, message: 'Target updated. Restart server to apply.' });
+    res.json({ success: true, message: 'Target updated. Changes applied immediately.' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
