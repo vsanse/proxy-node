@@ -1,0 +1,637 @@
+doctype html
+html(lang="en")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title Remote Proxy - #{title || 'Configuration'}
+    style
+      include styles.css
+    style.
+      .token-display {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 16px;
+        border-radius: 8px;
+        margin-bottom: 16px;
+        border: 1px solid rgba(0, 217, 255, 0.3);
+      }
+      .token-value {
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 14px;
+        color: #00ff88;
+        word-break: break-all;
+        padding: 8px 12px;
+        background: rgba(0, 255, 136, 0.1);
+        border-radius: 4px;
+        display: block;
+        margin-top: 8px;
+      }
+      .copy-btn {
+        background: rgba(0, 217, 255, 0.2);
+        color: #00d9ff;
+        border: 1px solid #00d9ff;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        cursor: pointer;
+        margin-left: 8px;
+      }
+      .copy-btn:hover {
+        background: rgba(0, 217, 255, 0.4);
+      }
+      .remote-badge {
+        background: rgba(136, 0, 255, 0.2);
+        color: #a855f7;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 12px;
+        font-weight: 600;
+        margin-left: 12px;
+      }
+      .usage-example {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 8px;
+        font-family: 'Monaco', 'Consolas', monospace;
+        font-size: 12px;
+        color: #888;
+        overflow-x: auto;
+      }
+      .usage-example code {
+        color: #00ff88;
+      }
+      .expiry-notice {
+        font-size: 12px;
+        color: #ffc107;
+        margin-top: 8px;
+      }
+      .tab-container {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 16px;
+      }
+      .tab {
+        padding: 8px 16px;
+        background: rgba(255, 255, 255, 0.1);
+        border: none;
+        border-radius: 6px 6px 0 0;
+        color: #888;
+        cursor: pointer;
+        font-size: 13px;
+      }
+      .tab.active {
+        background: rgba(0, 217, 255, 0.2);
+        color: #00d9ff;
+      }
+      .tab-content {
+        display: none;
+      }
+      .tab-content.active {
+        display: block;
+      }
+
+  body
+    .container
+      h1
+        span 🌐
+        |  Remote Proxy
+        span.remote-badge REMOTE
+      if token
+        p.subtitle User-isolated proxy configuration (Token: #{token.substring(0, 8)}...)
+      else
+        p.subtitle Multi-tenant proxy server with user isolation
+
+      if message
+        .message(class=message.type)= message.text
+
+      if !token
+        //- No token - show create session
+        .card
+          h2 🔑 Create Session
+          p Get your unique token to start using the remote proxy server.
+          form(method="POST" action="/_remote/session")
+            button.btn.btn-primary(type="submit") Create New Session
+        
+        .card
+          h2 🔗 Have a Token?
+          form(method="GET" action="/_remote/config")
+            .form-group
+              label Your Token
+              input(type="text" name="token" placeholder="Enter your 32-character token" required)
+            button.btn.btn-primary(type="submit") Access Configuration
+      
+      else
+        //- Has token - show configuration
+        .card
+          h2 🔑 Your Session Token
+          .token-display
+            span Save this token - you'll need it to access your proxy configuration
+            code.token-value= token
+            button.copy-btn(onclick=`navigator.clipboard.writeText('${token}'); this.textContent='✓ Copied'`) 📋 Copy
+          p.expiry-notice ⚠️ Sessions expire after 24 hours of inactivity
+
+        //- Status Card
+        .card
+          h2 📊 Status
+          .stats
+            .stat
+              .stat-value= config.targets.length
+              .stat-label Active Targets
+            .stat
+              .stat-value= config.logging && config.logging.enabled ? '✓' : '✗'
+              .stat-label Logging
+
+        //- Usage Examples
+        .card
+          h2 📖 How to Use
+          .tab-container
+            button.tab.active(onclick="showTab('header')") Header
+            button.tab(onclick="showTab('query')") Query Param
+            button.tab(onclick="showTab('path')") Path Prefix
+          
+          #header-tab.tab-content.active
+            p Pass your token via the #[code X-Proxy-Token] header:
+            .usage-example
+              | curl -H "X-Proxy-Token: #[code= token]" #{baseUrl}/api/users
+          
+          #query-tab.tab-content
+            p Pass your token as a query parameter:
+            .usage-example
+              | curl "#{baseUrl}/api/users?token=#[code= token]"
+          
+          #path-tab.tab-content
+            p Include your token in the path:
+            .usage-example
+              | curl #{baseUrl}/t/#[code= token]/api/users
+
+        //- Targets Card
+        .card
+          h2 🎯 Configured Targets
+          if config.targets.length === 0
+            p.no-targets No targets configured. Add one below.
+          else
+            each target, index in config.targets
+              .target(data-target-name=target.name)
+                .target-header
+                  .target-name-group
+                    span.target-name= target.name
+                  span.badge= target.pattern
+                .target-info
+                  label Pattern:
+                  span= target.pattern
+                  label Target URL:
+                  span= target.target
+                  label Cookies:
+                  if target.cookies && target.cookies.trim()
+                    span= target.cookies.length > 50 ? target.cookies.substring(0, 50) + '...' : target.cookies
+                  else
+                    span (none)
+                  label Headers:
+                  if target.headers && Object.keys(target.headers).length > 0
+                    span= Object.keys(target.headers).join(', ')
+                  else
+                    span (none)
+                .target-actions
+                  button.btn.btn-secondary.btn-sm(type="button" onclick=`openEditModal(${JSON.stringify(target).replace(/'/g, "\\'")})`) Edit
+                  form.delete-form(method="POST" action=`/_remote/targets/${encodeURIComponent(target.name)}/delete?token=${token}` style="display:inline;margin:0;")
+                    button.btn.btn-danger.btn-sm(type="submit" onclick="return confirm('Delete this target?')") Delete
+
+        //- Add New Target Card
+        .card
+          .collapsible-header(onclick="toggleCollapsible(this)")
+            h2 ➕ Add New Target
+            span.arrow ▼
+          .collapsible-content
+            form(method="POST" action=`/_remote/targets?token=${token}`)
+              .form-group
+                label Name
+                input(type="text" name="name" placeholder="my-api" required)
+                p.help-text A unique identifier for this target
+              .form-group
+                label Pattern
+                input(type="text" name="pattern" placeholder="/api/*" required)
+                p.help-text URL pattern to match (e.g., /api/*, /users/**, /*)
+              .form-group
+                label Target URL
+                input(type="url" name="target" placeholder="https://api.example.com" required)
+              .form-group
+                label Cookies
+                textarea(name="cookies" placeholder="session=abc123; token=xyz789")
+                p.help-text Optional - leave empty if using only headers
+              .form-group
+                label Custom Headers (JSON)
+                textarea(name="headers" placeholder='{"Authorization": "Bearer token123"}')
+              button.btn.btn-primary(type="submit") Add Target
+
+        //- API Reference
+        .card
+          h2 📋 API Reference
+          .target-info
+            label Create Session:
+            span POST #{baseUrl}/_remote/session
+            label Get Config:
+            span GET #{baseUrl}/_remote/api/config?token=YOUR_TOKEN
+            label Add Target:
+            span POST #{baseUrl}/_remote/api/targets?token=YOUR_TOKEN
+            label Delete Target:
+            span DELETE #{baseUrl}/_remote/api/targets/:name?token=YOUR_TOKEN
+            label Proxy Request:
+            span ANY #{baseUrl}/your/path (with X-Proxy-Token header)
+
+        //- Backup & Restore
+        .card
+          h2 💾 Backup & Restore
+          p.help-text Sessions expire after 24 hours of inactivity. Save your configuration to restore it later.
+          
+          .form-group
+            label
+              strong Export Configuration
+            p.help-text Download your targets and settings as a JSON file
+            button.btn.btn-primary(type="button" onclick="exportConfig()") 📥 Download Config
+          
+          .form-group(style="margin-top: 20px;")
+            label
+              strong Import Configuration
+            p.help-text Upload a previously exported JSON file to restore your settings
+            input#import-file(type="file" accept=".json" style="display:none;" onchange="importConfig(this)")
+            button.btn.btn-secondary(type="button" onclick="document.getElementById('import-file').click()") 📤 Upload Config
+          
+          .form-group(style="margin-top: 20px;")
+            label
+              strong Browser Backup
+            p.help-text Auto-save to this browser's localStorage for quick recovery
+            button.btn.btn-secondary(type="button" onclick="saveToLocalStorage()" id="save-localStorage-btn") 💾 Save to Browser
+            button.btn.btn-secondary(type="button" onclick="loadFromLocalStorage()" id="load-localStorage-btn" style="margin-left: 8px;") 📂 Restore from Browser
+
+        //- Delete Session
+        .card
+          h2 🗑️ Delete Session
+          p This will permanently delete your session and all configured targets.
+          form(method="POST" action=`/_remote/session/delete?token=${token}`)
+            button.btn.btn-danger(type="submit" onclick="return confirm('Are you sure? This will delete all your targets.')") Delete Session
+
+    //- Edit Target Modal
+    #edit-modal.modal
+      .modal-backdrop(onclick="closeEditModal()")
+      .modal-content
+        .modal-header
+          h3 ✏️ Edit Target
+          button.modal-close(onclick="closeEditModal()") ×
+        form#edit-form(method="POST")
+          input#edit-original-name(type="hidden" name="originalName")
+          .form-group
+            label Name
+            input#edit-name(type="text" name="name" required)
+          .form-group
+            label Pattern
+            input#edit-pattern(type="text" name="pattern" required)
+            p.help-text URL pattern to match (e.g., /api/*, /users/**, /*)
+          .form-group
+            label Target URL
+            input#edit-target(type="url" name="target" required)
+          .form-group
+            label Cookies
+            textarea#edit-cookies(name="cookies" rows="3")
+          .form-group
+            label Custom Headers (JSON)
+            textarea#edit-headers(name="headers" rows="3")
+          .modal-actions
+            button.btn.btn-secondary(type="button" onclick="closeEditModal()") Cancel
+            button.btn.btn-primary(type="submit") Save Changes
+
+    script.
+      const token = '#{token}';
+      
+      function toggleCollapsible(header) {
+        const content = header.nextElementSibling;
+        const arrow = header.querySelector('.arrow');
+        content.classList.toggle('show');
+        arrow.classList.toggle('open');
+      }
+      
+      function showTab(tabName) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`[onclick="showTab('${tabName}')"]`).classList.add('active');
+        document.getElementById(tabName + '-tab').classList.add('active');
+      }
+      
+      function openEditModal(target) {
+        const modal = document.getElementById('edit-modal');
+        const form = document.getElementById('edit-form');
+        
+        form.action = '/_remote/targets/' + encodeURIComponent(target.name) + '/edit?token=' + token;
+        
+        document.getElementById('edit-original-name').value = target.name;
+        document.getElementById('edit-name').value = target.name;
+        document.getElementById('edit-pattern').value = target.pattern;
+        document.getElementById('edit-target').value = target.target;
+        document.getElementById('edit-cookies').value = target.cookies || '';
+        document.getElementById('edit-headers').value = target.headers && Object.keys(target.headers).length > 0 
+          ? JSON.stringify(target.headers, null, 2) 
+          : '';
+        
+        modal.classList.add('show');
+        document.body.style.overflow = 'hidden';
+      }
+      
+      function closeEditModal() {
+        const modal = document.getElementById('edit-modal');
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+      }
+      
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') closeEditModal();
+      });
+      
+      // Export configuration
+      function exportConfig() {
+        fetch('/_remote/api/export?token=' + token)
+          .then(res => {
+            if (!res.ok) throw new Error('Export failed');
+            return res.blob();
+          })
+          .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `proxy-config-${token.substring(0, 8)}-${new Date().toISOString().split('T')[0]}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            showNotification('✅ Configuration exported successfully!', 'success');
+          })
+          .catch(err => {
+            showNotification('❌ Export failed: ' + err.message, 'error');
+          });
+      }
+      
+      // Import configuration
+      function importConfig(input) {
+        const file = input.files[0];
+        if (!file) return;
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const config = JSON.parse(e.target.result);
+            
+            fetch('/_remote/api/import?token=' + token, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(config)
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                showNotification('✅ Configuration imported! Reloading...', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                throw new Error(data.error || 'Import failed');
+              }
+            })
+            .catch(err => {
+              showNotification('❌ Import failed: ' + err.message, 'error');
+            });
+          } catch (err) {
+            showNotification('❌ Invalid JSON file: ' + err.message, 'error');
+          }
+        };
+        reader.readAsText(file);
+        input.value = ''; // Reset input
+      }
+      
+      // Save to localStorage
+      function saveToLocalStorage(silent = false) {
+        fetch('/_remote/api/config?token=' + token)
+          .then(res => res.json())
+          .then(data => {
+            const backupKey = 'proxy-backup-' + token.substring(0, 8);
+            const backup = {
+              version: '1.0',
+              exportedAt: new Date().toISOString(),
+              token: token,
+              savedAt: new Date().toISOString(),
+              config: {
+                targets: data.targets,
+                logging: data.logging
+              }
+            };
+            localStorage.setItem(backupKey, JSON.stringify(backup));
+            localStorage.setItem('proxy-last-backup', backupKey);
+            localStorage.setItem(backupKey + '-time', Date.now().toString());
+            if (!silent) {
+              showNotification('✅ Saved to browser localStorage!', 'success');
+            }
+          })
+          .catch(err => {
+            if (!silent) {
+              showNotification('❌ Save failed: ' + err.message, 'error');
+            }
+          });
+      }
+      
+      // Load from localStorage
+      function loadFromLocalStorage() {
+        const backupKey = 'proxy-last-backup';
+        const lastBackup = localStorage.getItem(backupKey);
+        
+        if (!lastBackup) {
+          showNotification('⚠️ No backup found in this browser', 'warning');
+          return;
+        }
+        
+        const backupData = localStorage.getItem(lastBackup);
+        if (!backupData) {
+          showNotification('⚠️ Backup data not found', 'warning');
+          return;
+        }
+        
+        try {
+          const backup = JSON.parse(backupData);
+          const savedDate = new Date(backup.savedAt).toLocaleString();
+          
+          if (confirm(`Restore backup from ${savedDate}?\\nThis will replace your current configuration.`)) {
+            // Send in the same format as exported files
+            const importData = {
+              version: backup.version || '1.0',
+              exportedAt: backup.exportedAt || backup.savedAt,
+              config: backup.config
+            };
+            
+            fetch('/_remote/api/import?token=' + token, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(importData)
+            })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                showNotification('✅ Configuration restored! Reloading...', 'success');
+                setTimeout(() => window.location.reload(), 1500);
+              } else {
+                throw new Error(data.error || 'Restore failed');
+              }
+            })
+            .catch(err => {
+              showNotification('❌ Restore failed: ' + err.message, 'error');
+            });
+          }
+        } catch (err) {
+          showNotification('❌ Invalid backup data: ' + err.message, 'error');
+        }
+      }
+      
+      // Show notification
+      function showNotification(message, type = 'info') {
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          padding: 16px 20px;
+          background: ${type === 'success' ? 'rgba(0, 255, 136, 0.2)' : type === 'error' ? 'rgba(255, 82, 82, 0.2)' : 'rgba(255, 193, 7, 0.2)'};
+          border: 1px solid ${type === 'success' ? '#00ff88' : type === 'error' ? '#ff5252' : '#ffc107'};
+          border-radius: 8px;
+          color: ${type === 'success' ? '#00ff88' : type === 'error' ? '#ff5252' : '#ffc107'};
+          z-index: 10000;
+          font-size: 14px;
+          max-width: 400px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        notification.textContent = message;
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+          notification.style.opacity = '0';
+          notification.style.transition = 'opacity 0.3s';
+          setTimeout(() => notification.remove(), 300);
+        }, 3000);
+      }
+      
+      // Auto-save to localStorage (silent mode)
+      function autoSaveToLocalStorage() {
+        if (#{config.targets.length > 0}) {
+          const backupKey = 'proxy-backup-' + token.substring(0, 8);
+          const lastAutoSave = localStorage.getItem(backupKey + '-time');
+          const now = Date.now();
+          
+          // Auto-save every 2 minutes
+          if (!lastAutoSave || (now - parseInt(lastAutoSave)) > 2 * 60 * 1000) {
+            saveToLocalStorage(true); // silent = true
+          }
+        }
+      }
+      
+      // Clean up old localStorage backups
+      function cleanupLocalStorage() {
+        try {
+          const MAX_BACKUPS = 5; // Keep only last 5 backups
+          const MAX_AGE_DAYS = 7; // Delete backups older than 7 days
+          const now = Date.now();
+          const backups = [];
+          
+          // Find all proxy backups
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('proxy-backup-')) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key));
+                const savedAt = new Date(data.savedAt).getTime();
+                const ageInDays = (now - savedAt) / (1000 * 60 * 60 * 24);
+                
+                backups.push({
+                  key: key,
+                  savedAt: savedAt,
+                  ageInDays: ageInDays,
+                  size: JSON.stringify(data).length
+                });
+              } catch (e) {
+                // Invalid backup, mark for deletion
+                backups.push({ key: key, savedAt: 0, ageInDays: 999, size: 0 });
+              }
+            }
+          }
+          
+          // Sort by age (newest first)
+          backups.sort((a, b) => b.savedAt - a.savedAt);
+          
+          let deleted = 0;
+          backups.forEach((backup, index) => {
+            // Delete if too old or exceeds max count
+            if (backup.ageInDays > MAX_AGE_DAYS || index >= MAX_BACKUPS) {
+              localStorage.removeItem(backup.key);
+              localStorage.removeItem(backup.key + '-time');
+              deleted++;
+              
+              // Update last backup pointer if we deleted the current one
+              const lastBackup = localStorage.getItem('proxy-last-backup');
+              if (lastBackup === backup.key && backups[0] && backups[0].key !== backup.key) {
+                localStorage.setItem('proxy-last-backup', backups[0].key);
+              }
+            }
+          });
+          
+          if (deleted > 0) {
+            console.log(`🧹 Cleaned up ${deleted} old backup(s) from localStorage`);
+          }
+          
+          // Check total localStorage usage
+          let totalSize = 0;
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key) {
+              totalSize += (localStorage.getItem(key) || '').length;
+            }
+          }
+          
+          // Warn if approaching 5MB limit (most browsers)
+          const sizeMB = totalSize / (1024 * 1024);
+          if (sizeMB > 4) {
+            console.warn(`⚠️ localStorage usage: ${sizeMB.toFixed(2)}MB (approaching 5MB limit)`);
+          }
+        } catch (err) {
+          console.error('Failed to cleanup localStorage:', err);
+        }
+      }
+      
+      // Run auto-save on page load
+      autoSaveToLocalStorage();
+      
+      // Run cleanup on page load
+      cleanupLocalStorage();
+      
+      // Set up continuous auto-save every 2 minutes
+      setInterval(autoSaveToLocalStorage, 2 * 60 * 1000);
+      
+      // Run cleanup every hour
+      setInterval(cleanupLocalStorage, 60 * 60 * 1000);
+      
+      // Also auto-save when user makes changes (debounced)
+      let saveTimeout;
+      function scheduleSave() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(() => {
+          saveToLocalStorage(true);
+        }, 3000); // 3 seconds after last change
+      }
+      
+      // Trigger auto-save when any form is submitted (add, edit, delete target)
+      document.querySelectorAll('form').forEach(form => {
+        form.addEventListener('submit', function() {
+          // Schedule save after form submission (page will reload, but good practice)
+          scheduleSave();
+        });
+      });
+      
+      // Monitor for successful form submissions via page reload
+      window.addEventListener('load', function() {
+        // If we just reloaded after a form submission, schedule an auto-save
+        if (document.referrer.includes('/_remote/')) {
+          setTimeout(() => scheduleSave(), 500);
+        }
+      });
+
+
