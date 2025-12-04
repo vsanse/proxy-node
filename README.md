@@ -11,6 +11,7 @@ A powerful Express proxy server that forwards API requests with automatic authen
 - ✅ No database required - sessions stored in-memory with 24h expiry
 - ✅ Perfect for quick testing and development
 - ✅ Each user gets isolated configuration via unique tokens
+- ✅ **Backup & Restore:** Download config as JSON, upload to restore, or auto-save to browser localStorage
 - ⚠️ **Important:** Your backend API must be publicly accessible (not behind VPN)
 - ⚠️ Sessions expire after 24 hours of inactivity
 
