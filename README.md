@@ -2,6 +2,12 @@
 
 A powerful Express proxy server that forwards API requests with automatic authentication injection. Perfect for local development with staging APIs, especially when using Chrome DevTools MCP with AI coding assistants like GitHub Copilot or Cursor.
 
+## 🌐 Hosted Version
+
+Try it now without installation: **[https://proxykit.onrender.com](https://proxykit.onrender.com)**
+
+Create a session and start proxying requests in seconds!
+
 ## ✨ Features
 
 - **🔐 Automatic Authentication** - Injects cookies, bearer tokens, and custom headers
