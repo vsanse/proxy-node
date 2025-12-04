@@ -10,6 +10,7 @@ A powerful Express proxy server that forwards API requests with automatic authen
 - **🔧 Configuration UI** - Web interface to manage settings without editing files
 - **⚡ Live Reload** - Browser auto-refresh when config or templates change
 - **🔌 Hot Reload** - Server auto-restart on code changes via nodemon
+- **🌐 Remote Mode** - Multi-tenant server with CORS enabled and user-isolated configs
 
 ## 🚀 Quick Start
 
@@ -504,3 +505,153 @@ Potential features for future development:
 ## 📄 License
 
 MIT
+
+---
+
+## 🌐 Remote Server Mode
+
+The remote server mode is designed for shared/deployed environments where multiple users need isolated proxy configurations without interfering with each other.
+
+### Key Differences from Local Mode
+
+| Feature | Local Mode (`npm start`) | Remote Mode (`npm run remote`) |
+|---------|--------------------------|--------------------------------|
+| CORS | Not configured | Enabled for all origins |
+| Storage | File-based (`proxy-config.json`) | In-memory (per-user tokens) |
+| Multi-user | Single user | Multiple isolated users |
+| Persistence | Persistent (saved to file) | Session-based (24h expiry) |
+| Default Port | 3001 | 3002 |
+
+### Quick Start (Remote Mode)
+
+```bash
+# Install dependencies (includes cors package)
+npm install
+
+# Start the remote server
+npm run remote
+
+# Or with a custom port
+PORT=8080 npm run remote
+```
+
+### Creating a Session
+
+Each user gets a unique 32-character token that isolates their configuration:
+
+```bash
+# Create a new session via API
+curl -X POST http://localhost:3002/_remote/api/session
+
+# Response:
+{
+  "success": true,
+  "token": "a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6",
+  "message": "Session created. Save your token - it expires after 24 hours of inactivity."
+}
+```
+
+Or use the Web UI at `http://localhost:3002/_remote`
+
+### Adding Targets
+
+Via API:
+```bash
+curl -X POST http://localhost:3002/_remote/api/targets?token=YOUR_TOKEN \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "my-api",
+    "pattern": "/api/*",
+    "target": "https://api.example.com",
+    "cookies": "session=abc123",
+    "headers": {"Authorization": "Bearer token123"}
+  }'
+```
+
+Or via Web UI at `http://localhost:3002/_remote/config?token=YOUR_TOKEN`
+
+### Making Proxy Requests
+
+Three ways to authenticate your proxy requests:
+
+**1. Header (Recommended)**
+```bash
+curl -H "X-Proxy-Token: YOUR_TOKEN" http://localhost:3002/api/users
+```
+
+**2. Query Parameter**
+```bash
+curl "http://localhost:3002/api/users?token=YOUR_TOKEN"
+```
+
+**3. Path Prefix**
+```bash
+curl http://localhost:3002/t/YOUR_TOKEN/api/users
+```
+
+### Frontend Integration (Remote Mode)
+
+```javascript
+// config.js
+const PROXY_TOKEN = 'your-32-char-token';
+const PROXY_URL = 'https://your-remote-proxy.com';
+
+// Option 1: Using fetch with header
+async function fetchWithProxy(path) {
+  return fetch(`${PROXY_URL}${path}`, {
+    headers: {
+      'X-Proxy-Token': PROXY_TOKEN,
+    },
+  });
+}
+
+// Option 2: Using query parameter
+async function fetchWithProxyQuery(path) {
+  const separator = path.includes('?') ? '&' : '?';
+  return fetch(`${PROXY_URL}${path}${separator}token=${PROXY_TOKEN}`);
+}
+
+// Usage
+const users = await fetchWithProxy('/api/users');
+```
+
+### Remote API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/_remote` | GET | Landing page / documentation |
+| `/_remote/api/session` | POST | Create new session, returns token |
+| `/_remote/api/session` | DELETE | Delete session (requires token) |
+| `/_remote/config?token=XXX` | GET | Web UI for configuration |
+| `/_remote/api/config?token=XXX` | GET | Get user configuration |
+| `/_remote/api/targets?token=XXX` | GET | List all targets |
+| `/_remote/api/targets?token=XXX` | POST | Add a new target |
+| `/_remote/api/targets/:name?token=XXX` | PUT | Update a target |
+| `/_remote/api/targets/:name?token=XXX` | DELETE | Delete a target |
+| `/_remote/api/stats` | GET | Server statistics |
+| `/_health` | GET | Health check |
+
+### Session Expiration
+
+- Sessions expire after **24 hours of inactivity**
+- Each request with a valid token resets the expiration timer
+- Expired sessions are automatically cleaned up
+
+### Deployment Considerations
+
+1. **No persistent storage**: Configurations are lost on server restart. For production, consider implementing database-backed storage.
+
+2. **Memory usage**: Each active session consumes memory. Monitor `/_remote/api/stats` for active session count.
+
+3. **Security**: Tokens are randomly generated but transmitted in headers/URLs. Use HTTPS in production.
+
+4. **Rate limiting**: Consider adding rate limiting for production deployments.
+
+### Environment Variables (Remote Mode)
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `PORT` | Server port | `3002` |
+| `LOG_ENABLED` | Enable console logging | `true` |
+| `LOG_REQUEST_BODY` | Log request bodies | `false` |
+| `LOG_RESPONSE_BODY` | Log response bodies | `false` |

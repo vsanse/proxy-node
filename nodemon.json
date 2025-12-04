@@ -1,5 +1,5 @@
 {
-  "watch": ["index.js", "src/", ".env"],
+  "watch": ["index.js", "remote.js", "src/", ".env"],
   "ext": "js",
   "ignore": ["node_modules/", "logs/", "src/views/", "proxy-config.json"],
   "delay": "500"
