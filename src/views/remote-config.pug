@@ -403,16 +403,23 @@ html(lang="en")
         input.value = ''; // Reset input
       }
       
-      // Save to localStorage
+      // Save to localStorage (token-independent)
       function saveToLocalStorage(silent = false) {
         fetch('/_remote/api/config?token=' + token)
           .then(res => res.json())
           .then(data => {
-            const backupKey = 'proxy-backup-' + token.substring(0, 8);
+            // Only save if there are targets
+            if (!data.targets || data.targets.length === 0) {
+              if (!silent) {
+                showNotification('⚠️ No targets to save', 'warning');
+              }
+              return;
+            }
+            
+            const backupKey = 'proxykit-config-backup';
             const backup = {
               version: '1.0',
               exportedAt: new Date().toISOString(),
-              token: token,
               savedAt: new Date().toISOString(),
               config: {
                 targets: data.targets,
@@ -420,7 +427,6 @@ html(lang="en")
               }
             };
             localStorage.setItem(backupKey, JSON.stringify(backup));
-            localStorage.setItem('proxy-last-backup', backupKey);
             localStorage.setItem(backupKey + '-time', Date.now().toString());
             if (!silent) {
               showNotification('✅ Saved to browser localStorage!', 'success');
@@ -433,19 +439,13 @@ html(lang="en")
           });
       }
       
-      // Load from localStorage
+      // Load from localStorage (token-independent)
       function loadFromLocalStorage() {
-        const backupKey = 'proxy-last-backup';
-        const lastBackup = localStorage.getItem(backupKey);
+        const backupKey = 'proxykit-config-backup';
+        const backupData = localStorage.getItem(backupKey);
         
-        if (!lastBackup) {
-          showNotification('⚠️ No backup found in this browser', 'warning');
-          return;
-        }
-        
-        const backupData = localStorage.getItem(lastBackup);
         if (!backupData) {
-          showNotification('⚠️ Backup data not found', 'warning');
+          showNotification('⚠️ No backup found in this browser', 'warning');
           return;
         }
         
@@ -511,126 +511,56 @@ html(lang="en")
         }, 3000);
       }
       
-      // Auto-save to localStorage (silent mode)
-      function autoSaveToLocalStorage() {
-        if (#{config.targets.length > 0}) {
-          const backupKey = 'proxy-backup-' + token.substring(0, 8);
-          const lastAutoSave = localStorage.getItem(backupKey + '-time');
-          const now = Date.now();
-          
-          // Auto-save every 2 minutes
-          if (!lastAutoSave || (now - parseInt(lastAutoSave)) > 2 * 60 * 1000) {
-            saveToLocalStorage(true); // silent = true
-          }
-        }
-      }
-      
       // Clean up old localStorage backups
       function cleanupLocalStorage() {
         try {
-          const MAX_BACKUPS = 5; // Keep only last 5 backups
-          const MAX_AGE_DAYS = 7; // Delete backups older than 7 days
+          const MAX_AGE_DAYS = 30; // Delete backups older than 30 days
           const now = Date.now();
-          const backups = [];
+          const backupKey = 'proxykit-config-backup';
           
-          // Find all proxy backups
-          for (let i = 0; i < localStorage.length; i++) {
-            const key = localStorage.key(i);
-            if (key && key.startsWith('proxy-backup-')) {
-              try {
-                const data = JSON.parse(localStorage.getItem(key));
-                const savedAt = new Date(data.savedAt).getTime();
-                const ageInDays = (now - savedAt) / (1000 * 60 * 60 * 24);
-                
-                backups.push({
-                  key: key,
-                  savedAt: savedAt,
-                  ageInDays: ageInDays,
-                  size: JSON.stringify(data).length
-                });
-              } catch (e) {
-                // Invalid backup, mark for deletion
-                backups.push({ key: key, savedAt: 0, ageInDays: 999, size: 0 });
-              }
-            }
-          }
-          
-          // Sort by age (newest first)
-          backups.sort((a, b) => b.savedAt - a.savedAt);
-          
-          let deleted = 0;
-          backups.forEach((backup, index) => {
-            // Delete if too old or exceeds max count
-            if (backup.ageInDays > MAX_AGE_DAYS || index >= MAX_BACKUPS) {
-              localStorage.removeItem(backup.key);
-              localStorage.removeItem(backup.key + '-time');
-              deleted++;
+          // Check if backup exists and if it's too old
+          const backupData = localStorage.getItem(backupKey);
+          if (backupData) {
+            try {
+              const data = JSON.parse(backupData);
+              const savedAt = new Date(data.savedAt).getTime();
+              const ageInDays = (now - savedAt) / (1000 * 60 * 60 * 24);
               
-              // Update last backup pointer if we deleted the current one
-              const lastBackup = localStorage.getItem('proxy-last-backup');
-              if (lastBackup === backup.key && backups[0] && backups[0].key !== backup.key) {
-                localStorage.setItem('proxy-last-backup', backups[0].key);
+              if (ageInDays > MAX_AGE_DAYS) {
+                localStorage.removeItem(backupKey);
+                localStorage.removeItem(backupKey + '-time');
+                console.log(`🧹 Cleaned up old backup (${ageInDays.toFixed(0)} days old)`);
               }
+            } catch (e) {
+              // Invalid backup, remove it
+              localStorage.removeItem(backupKey);
+              localStorage.removeItem(backupKey + '-time');
+              console.log('🧹 Removed invalid backup from localStorage');
             }
-          });
-          
-          if (deleted > 0) {
-            console.log(`🧹 Cleaned up ${deleted} old backup(s) from localStorage`);
           }
           
-          // Check total localStorage usage
-          let totalSize = 0;
-          for (let i = 0; i < localStorage.length; i++) {
+          // Clean up legacy token-specific backups
+          for (let i = localStorage.length - 1; i >= 0; i--) {
             const key = localStorage.key(i);
-            if (key) {
-              totalSize += (localStorage.getItem(key) || '').length;
+            if (key && (key.startsWith('proxy-backup-') || key === 'proxy-last-backup')) {
+              localStorage.removeItem(key);
+              console.log(`🧹 Cleaned up legacy backup: ${key}`);
             }
-          }
-          
-          // Warn if approaching 5MB limit (most browsers)
-          const sizeMB = totalSize / (1024 * 1024);
-          if (sizeMB > 4) {
-            console.warn(`⚠️ localStorage usage: ${sizeMB.toFixed(2)}MB (approaching 5MB limit)`);
           }
         } catch (err) {
           console.error('Failed to cleanup localStorage:', err);
         }
       }
       
-      // Run auto-save on page load
-      autoSaveToLocalStorage();
-      
       // Run cleanup on page load
       cleanupLocalStorage();
       
-      // Set up continuous auto-save every 2 minutes
-      setInterval(autoSaveToLocalStorage, 2 * 60 * 1000);
-      
-      // Run cleanup every hour
-      setInterval(cleanupLocalStorage, 60 * 60 * 1000);
-      
-      // Also auto-save when user makes changes (debounced)
-      let saveTimeout;
-      function scheduleSave() {
-        clearTimeout(saveTimeout);
-        saveTimeout = setTimeout(() => {
-          saveToLocalStorage(true);
-        }, 3000); // 3 seconds after last change
-      }
-      
-      // Trigger auto-save when any form is submitted (add, edit, delete target)
-      document.querySelectorAll('form').forEach(form => {
-        form.addEventListener('submit', function() {
-          // Schedule save after form submission (page will reload, but good practice)
-          scheduleSave();
-        });
-      });
-      
-      // Monitor for successful form submissions via page reload
+      // Auto-save to localStorage when targets are added/deleted
+      // This runs after page reload from form submissions
       window.addEventListener('load', function() {
-        // If we just reloaded after a form submission, schedule an auto-save
-        if (document.referrer.includes('/_remote/')) {
-          setTimeout(() => scheduleSave(), 500);
+        // Only auto-save if there are targets and we came from a form submission
+        if (document.referrer.includes('/_remote/') && #{config.targets.length > 0}) {
+          setTimeout(() => saveToLocalStorage(true), 500);
         }
       });
 
