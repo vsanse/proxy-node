@@ -3,7 +3,7 @@ html(lang="en")
   head
     meta(charset="UTF-8")
     meta(name="viewport" content="width=device-width, initial-scale=1.0")
-    title Remote Proxy - #{title || 'Configuration'}
+    title ProxyKit Remote - #{title || 'Configuration'}
     style
       include styles.css
     style.
@@ -99,7 +99,7 @@ html(lang="en")
       if token
         p.subtitle User-isolated proxy configuration (Token: #{token.substring(0, 8)}...)
       else
-        p.subtitle Multi-tenant proxy server with user isolation
+        p.subtitle ProxyKit - Multi-tenant proxy server with user isolation
 
       if message
         .message(class=message.type)= message.text
@@ -108,7 +108,7 @@ html(lang="en")
         //- No token - show create session
         .card
           h2 🔑 Create Session
-          p Get your unique token to start using the remote proxy server.
+          p Get your unique token to start using ProxyKit remote server.
           form(method="POST" action="/_remote/session")
             button.btn.btn-primary(type="submit") Create New Session
         

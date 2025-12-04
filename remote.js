@@ -145,9 +145,9 @@ app.use((err, req, res, next) => {
 
 // ============ Start Server ============
 app.listen(PORT, () => {
-  console.log('\n🌐 ========================================');
-  console.log('   REMOTE PROXY SERVER');
-  console.log('   ========================================\n');
+  console.log('🌐 ========================================');
+  console.log('   PROXYKIT - REMOTE SERVER');
+  console.log('   ========================================');
   console.log(`✅ Server running on http://localhost:${PORT}`);
   console.log(`🔧 Configuration UI: http://localhost:${PORT}/_remote`);
   console.log(`💚 Health check: http://localhost:${PORT}/_health`);
@@ -161,14 +161,14 @@ app.listen(PORT, () => {
 
 // ============ Graceful Shutdown ============
 process.on('SIGINT', () => {
-  console.log('\n👋 Shutting down remote proxy server...');
+  console.log('\n👋 Shutting down ProxyKit remote server...');
   userStorage.forceSave();
   logger.close();
   process.exit(0);
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n👋 Shutting down remote proxy server...');
+  console.log('\n👋 Shutting down ProxyKit remote server...');
   userStorage.forceSave();
   logger.close();
   process.exit(0);

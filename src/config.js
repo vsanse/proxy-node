@@ -1,5 +1,5 @@
 /**
- * Configuration management for the proxy server
+ * Configuration management for ProxyKit
  * Supports single target (legacy) and multiple targets (new)
  */
 

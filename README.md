@@ -1,4 +1,4 @@
-# Proxy Server
+# ProxyKit
 
 A powerful Express proxy server that forwards API requests with automatic authentication injection. Perfect for local development with staging APIs, especially when using Chrome DevTools MCP with AI coding assistants like GitHub Copilot or Cursor.
 

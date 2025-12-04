@@ -33,7 +33,7 @@ app.use('/', proxyRouter);
 
 // Start server
 app.listen(initialConfig.port, () => {
-  console.log(`\n✅ Proxy server running on http://localhost:${initialConfig.port}`);
+  console.log(`\n✅ ProxyKit server running on http://localhost:${initialConfig.port}`);
   console.log(`🔧 Configuration UI: http://localhost:${initialConfig.port}/_config`);
   console.log(`💚 Health check: http://localhost:${initialConfig.port}/_health`);
   console.log(`\n📝 Point your local app to http://localhost:${initialConfig.port}\n`);
@@ -47,7 +47,7 @@ process.on('SIGINT', () => {
 });
 
 process.on('SIGTERM', () => {
-  console.log('\n👋 Shutting down proxy server...');
+  console.log('\n👋 Shutting down ProxyKit server...');
   logger.close();
   process.exit(0);
 });

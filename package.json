@@ -1,7 +1,7 @@
 {
-  "name": "proxy-node",
+  "name": "proxykit",
   "version": "1.0.0",
-  "description": "Express proxy server that attaches cookies to API requests",
+  "description": "ProxyKit - Express proxy server with user-isolated remote sessions",
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",

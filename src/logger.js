@@ -144,7 +144,7 @@ function logError(req, error, targetName) {
  * Log server startup info
  */
 function logStartup(config) {
-  console.log(`\n🚀 Proxy server starting...`);
+  console.log(`\n🚀 ProxyKit starting...`);
   console.log(`📡 Port: ${config.port}`);
   console.log(`📋 Configured targets:`);
   config.targets.forEach((t, i) => {
