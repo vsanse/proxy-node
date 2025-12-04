@@ -4,9 +4,17 @@ A powerful Express proxy server that forwards API requests with automatic authen
 
 ## 🌐 Hosted Version
 
-Try it now without installation: **[https://proxykit.onrender.com](https://proxykit.onrender.com)**
+**Try ProxyKit without any local setup:**
 
-Create a session and start proxying requests in seconds!
+**Remote Server (Multi-user with session isolation):** [https://proxykit.onrender.com/_remote](https://proxykit.onrender.com/_remote)
+
+- ✅ No database required - sessions stored in-memory with 24h expiry
+- ✅ Perfect for quick testing and development
+- ✅ Each user gets isolated configuration via unique tokens
+- ⚠️ **Important:** Your backend API must be publicly accessible (not behind VPN)
+- ⚠️ Sessions expire after 24 hours of inactivity
+
+**For VPN-protected APIs or permanent configuration:** Use the local setup below.
 
 ## ✨ Features
 
